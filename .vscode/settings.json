@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "*.py": "python",
+        "prime.h": "c",
+        "math.h": "c",
+        "enum.h": "c",
+        "windows.h": "c",
+        "sdkddkver.h": "c",
+        "ncurses.h": "c"
+    }
+}
