@@ -37,7 +37,7 @@ $(TARGET): $(OBJS)
 
 # Clean up build files
 clean:
-	$(RM) $(OBJS) $(TARGET)
+	$(RM) $(OBJS) $(TARGET)$(EXE)
 
 # Rebuild everything
 rebuild: clean all
