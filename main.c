@@ -3,7 +3,7 @@
 #include <string.h>
 #include <conio.h>
 #include <windows.h>
-#include <ncursesw/ncurses.h>
+#include <ncurses/ncurses.h>
 
 #include "enum.h"
 
