@@ -9,6 +9,9 @@
 
 #define MAX_ITEMS   100
 
+#define ARROW_UP       KEY_UP
+#define ARROW_DOWN     KEY_DOWN
+
 typedef struct Branches {
     char *branches[MAX_ITEMS];
     int total;
@@ -21,10 +24,15 @@ Branches *mybrch = &mybranch;
 static MainProc currentProc = Proc_NONE;
 static ProcCommand currentCmd = PROC_CMD_NONE;
 
-static void ClearScreen()
-{
-    system("cls");
+#ifdef _WIN32
+#include <windows.h>
+void hide_cursor() {
+    CONSOLE_CURSOR_INFO cursorInfo;
+    cursorInfo.dwSize = 1;
+    cursorInfo.bVisible = FALSE;
+    SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursorInfo);
 }
+#endif
 
 static void SetNextProc(MainProc proc)
 {
@@ -67,15 +75,22 @@ static int AddBranches(FILE* pPipe)
 
 static void DumpBranches()
 {
+    static int displayAllBranches = 1;
+    
     for (int i = 0; i < mybrch->total; i++) {
         if (i == mybrch->currentIdx) {
-            printf("-->  %d: %s\n", i + 1, mybrch->branches[i]);
+            mvprintw(i, 0, "--->"); // Draw the marker for the current index
+        } else if (i == mybrch->currentIdx - 1 || i == mybrch->currentIdx + 1) {
+            mvprintw(i, 0, "    "); // Only clear the marker for adjacent rows
         }
-        else {
-            printf("     %d: %s\n", i + 1, mybrch->branches[i]);
+        
+        if (displayAllBranches) {
+            mvprintw(i, 5, "%d: %s",  i+1, mybrch->branches[i]);
         }
     }
-    Sleep(100);
+    
+    displayAllBranches = 0;
+    refresh();
 }
 
 static void KeyProcess()
@@ -117,7 +132,6 @@ static void MainProcess()
     {
         case Proc_UPDATE_UI:
         {
-            ClearScreen();
             DumpBranches();
             SetNextProc(Proc_PROCESS);
         } break;
@@ -136,14 +150,16 @@ static void MainProcess()
 
 static void KeyHandler()
 {
-    char key = getch();
+    int key = getch();
     switch (key)
     {
+        case ARROW_UP: 
         case Key_UP:
         {
             SetNextCmd(Proc_CMD_UP);
         } break;
 
+        case ARROW_DOWN:
         case Key_DOWN:
         {
             SetNextCmd(Proc_CMD_DOWN);
@@ -169,13 +185,6 @@ static void KeyHandler()
     }
 }
 
-DWORD WINAPI ThreadFunc(void* data) {
-    while (1) {
-        KeyHandler(); 
-    }
-    return 0;
-}
-
 
 int main(void)
 {
@@ -191,14 +200,20 @@ int main(void)
     feof(pPipe);
     _pclose(pPipe);
 
-    HANDLE thread = CreateThread(NULL, 0, ThreadFunc, NULL, 0, NULL);
-    if (thread == NULL) {
-        printf("Create thread failed");
-        exit(1);
-    }
-
+    /* Init ncurses */
+    initscr();             // Initialize ncurses
+    cbreak();              // Disable line buffering
+    noecho();              // Disable echoing of input
+    keypad(stdscr, TRUE);  // Enable special keys (arrows, etc.)
+    curs_set(0);           // Hide the cursor
+    nodelay(stdscr, TRUE);
+    
     while(1)
     {
         MainProcess();
+        KeyHandler();
     }
+
+    endwin();
+    return 0;
 }
