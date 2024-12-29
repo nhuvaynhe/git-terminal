@@ -24,16 +24,6 @@ Branches *mybrch = &mybranch;
 static MainProc currentProc = Proc_NONE;
 static ProcCommand currentCmd = PROC_CMD_NONE;
 
-#ifdef _WIN32
-#include <windows.h>
-void hide_cursor() {
-    CONSOLE_CURSOR_INFO cursorInfo;
-    cursorInfo.dwSize = 1;
-    cursorInfo.bVisible = FALSE;
-    SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursorInfo);
-}
-#endif
-
 static void SetNextProc(MainProc proc)
 {
     currentProc = proc;
@@ -72,25 +62,36 @@ static int AddBranches(FILE* pPipe)
     }
 }
 
-
-static void DumpBranches()
+static void DumpBranches(const char *query)
 {
+    int y = 0;
     static int displayAllBranches = 1;
     
     for (int i = 0; i < mybrch->total; i++) {
+        if (query == NULL) {
+            if (displayAllBranches) {
+                mvprintw(i, 5, "%d: %s",  i+1, mybrch->branches[i]);
+            }
+        }
+        else {
+            move(i, 0); 
+            clrtoeol();
+
+            if (strstr(mybrch->branches[i], query) != NULL) {
+                mvprintw(y++, 5, "%d: %s", y, mybrch->branches[i]);
+            }
+        }
+
         if (i == mybrch->currentIdx) {
-            mvprintw(i, 0, "--->"); // Draw the marker for the current index
-        } else if (i == mybrch->currentIdx - 1 || i == mybrch->currentIdx + 1) {
+            mvprintw(i, 0, "--->"); 
+        } 
+        else if (i == mybrch->currentIdx - 1 || 
+                 i == mybrch->currentIdx + 1) {
             mvprintw(i, 0, "    "); // Only clear the marker for adjacent rows
         }
-        
-        if (displayAllBranches) {
-            mvprintw(i, 5, "%d: %s",  i+1, mybrch->branches[i]);
-        }
     }
-    
-    displayAllBranches = 0;
-    refresh();
+
+    displayAllBranches = (query == NULL) ? 0 : 1;
 }
 
 static void KeyProcess()
@@ -119,6 +120,65 @@ static void KeyProcess()
             SetNextProc(Proc_UPDATE_UI);
         } break;
 
+        case Proc_CMD_SEARCH:
+        {
+            char buffer[100] = {0x00};
+            int bufferLen = 0;
+            int y = mybrch->total;
+            int update = 0;
+
+            curs_set(1);      
+            noecho();
+            refresh();        
+
+            nodelay(stdscr, FALSE);  // Disable non-blocking mod
+
+            while (1)
+            {
+                if (update) {
+                    move(y+1, 0); 
+                    clrtoeol();
+                    update = 0;
+                }
+
+                mvprintw(y+1, 0, ":");
+                mvprintw(y+1, 1, "%s", buffer);
+
+                refresh();
+
+                char key = getch();
+                if (key == '\n')  {
+                    break;
+                } 
+                else if (key == Key_ESCAPE) {
+                    buffer[0] = '\0'; 
+                    break;
+                } 
+                else if (key == KEY_BACKSPACE || key == Key_BACKSPACE)  {
+                    if (bufferLen > 0) {
+                        buffer[--bufferLen] = '\0'; 
+                    }
+                    update = 1;
+                } 
+                else if (bufferLen < sizeof(buffer) - 1)  {
+                    buffer[bufferLen++] = key;
+                    buffer[bufferLen] = '\0'; 
+                }
+                
+                DumpBranches(buffer);
+                refresh();
+            }
+
+            nodelay(stdscr, TRUE); 
+            curs_set(0);
+
+            clear();
+            refresh();        
+
+            SetNextCmd(PROC_CMD_NONE);
+            SetNextProc(Proc_UPDATE_UI);
+        } break;
+
         default:
         {
             ;
@@ -132,7 +192,8 @@ static void MainProcess()
     {
         case Proc_UPDATE_UI:
         {
-            DumpBranches();
+            DumpBranches(NULL);
+            refresh();
             SetNextProc(Proc_PROCESS);
         } break;
 
@@ -172,6 +233,7 @@ static void KeyHandler()
 
         case Key_SEARCH:
         {
+            SetNextCmd(Proc_CMD_SEARCH);
         } break;
 
         case Key_QUIT:

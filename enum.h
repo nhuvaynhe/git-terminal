@@ -9,6 +9,7 @@ typedef enum MainProc {
 typedef enum ProcCommand {
     Proc_CMD_UP,
     Proc_CMD_DOWN,
+    Proc_CMD_SEARCH,
 
     PROC_CMD_NONE,
 } ProcCommand;
@@ -19,6 +20,8 @@ typedef enum KeyInput {
     Key_SELECT  = 13,
     Key_SEARCH  = '/',
     Key_QUIT    = 'q',
+    Key_ESCAPE  = 27,
+    Key_BACKSPACE = 7,
 
     Key_NONE,
 } KeyInput;
