@@ -54,6 +54,11 @@ static void NotifyUpdateUI(UIState state)
 
 static int SwitchBranch(Branches *branchList)
 {
+    if (has_colors()) {
+        start_color();
+        init_pair(1, COLOR_GREEN, COLOR_BLACK);
+    }
+
     char *selectedBranch = malloc(strlen(branchList->branches[branchList->currentIdx]) + 1);
     if (selectedBranch == NULL) {
         perror("Malloc failed");
@@ -61,12 +66,24 @@ static int SwitchBranch(Branches *branchList)
     }
 
     strcpy(selectedBranch, branchList->branches[branchList->currentIdx]);
-    
-    erase();
-    mvprintw(0, 0, "git checkout %s", selectedBranch);
-    refresh();
 
+    nodelay(stdscr, FALSE);  /* for waiting getch() */
+
+    int rows, cols;
+    getmaxyx(stdscr, rows, cols); 
+
+    attron(COLOR_PAIR(1)); // Enable the green color pair
+    mvprintw(rows/2, (cols-strlen(selectedBranch)-12)/2, 
+             "git checkout %s", selectedBranch);
+    attroff(COLOR_PAIR(1)); // Disable the green color pair
+    
+    refresh();
+    
     getch();
+    erase();
+
+    nodelay(stdscr, TRUE); 
+
     free(selectedBranch);
 
     return 0; 
@@ -184,6 +201,13 @@ static void KeyProcess()
             SetNextProc(Proc_UPDATE_UI);
         } break;
 
+        case Proc_CMD_ENTER:
+        {
+            SwitchBranch(&mybranch);
+            SetNextCmd(PROC_CMD_NONE);
+            SetNextProc(Proc_UPDATE_UI);
+        } break;
+
         case Proc_CMD_SEARCH:
         {
             char buffer[100] = {0x00};
@@ -296,7 +320,7 @@ static void KeyHandler()
 
         case Key_SELECT:
         {
-            printf("You press ENTER.\n");
+            SetNextCmd(Proc_CMD_ENTER);
         } break;
 
         case Key_SEARCH:
