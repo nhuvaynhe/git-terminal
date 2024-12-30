@@ -1,3 +1,13 @@
+typedef enum {
+    eFALSE,
+    eTRUE,
+} enumbool;
+
+typedef enum {
+    eSTATIC,
+    eUPDATE,
+} UIState;
+
 typedef enum MainProc {
     Proc_UPDATE_UI,
     Proc_PROCESS,
