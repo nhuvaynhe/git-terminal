@@ -19,10 +19,23 @@ typedef struct Branches {
 } Branches;
 
 Branches mybranch;
+Branches searchBranch;
+
 Branches *mybrch = &mybranch; 
+Branches *searchBuffer = &searchBranch; 
 
 static MainProc currentProc = Proc_NONE;
 static ProcCommand currentCmd = PROC_CMD_NONE;
+static UIState IsUpdateUI = eUPDATE;
+
+void remove_spaces(char* s) {
+    char* d = s;
+    do {
+        while (*d == ' ') {
+            ++d;
+        }
+    } while (*s++ = *d++);
+}
 
 static void SetNextProc(MainProc proc)
 {
@@ -33,6 +46,32 @@ static void SetNextCmd(ProcCommand cmd)
 {
     currentCmd = cmd;
 }
+
+static void NotifyUpdateUI(UIState state)
+{
+    IsUpdateUI = state;
+}
+
+static int SwitchBranch(Branches *branchList)
+{
+    char *selectedBranch = malloc(strlen(branchList->branches[branchList->currentIdx]) + 1);
+    if (selectedBranch == NULL) {
+        perror("Malloc failed");
+        return -1; 
+    }
+
+    strcpy(selectedBranch, branchList->branches[branchList->currentIdx]);
+    
+    erase();
+    mvprintw(0, 0, "git checkout %s", selectedBranch);
+    refresh();
+
+    getch();
+    free(selectedBranch);
+
+    return 0; 
+}
+
 
 static int AddBranches(FILE* pPipe)
 {
@@ -46,10 +85,10 @@ static int AddBranches(FILE* pPipe)
         if (i < MAX_ITEMS) {
             mybrch->branches[i] = malloc(sizeof(buffer) + 1);
             if (mybrch->branches[i] == NULL) {
-                printf("Malloc failed.\n");
                 exit(1);
             }
 
+            remove_spaces(buffer);
             strcpy(mybrch->branches[i], buffer);
 
             mybrch->total++;
@@ -62,36 +101,61 @@ static int AddBranches(FILE* pPipe)
     }
 }
 
+static void UpdateRowArrow(int highlightIdx, int row)
+{
+    if (row == highlightIdx) {
+        mvprintw(row, 0, "--->"); 
+    } 
+    else if (row == highlightIdx - 1 || row == highlightIdx + 1) {
+        mvprintw(row, 0, "    "); 
+    }
+}
+
 static void DumpBranches(const char *query)
 {
-    int y = 0;
-    static int displayAllBranches = 1;
+    int idx = 0;
+
+    if (IsUpdateUI & (searchBuffer->total > 0)) {
+        for (int i = 0; i < searchBuffer->total; i++) {
+            free(searchBuffer->branches[i]);
+            searchBuffer->branches[i] = NULL;
+        }
+        searchBuffer->total = 0;
+        searchBuffer->currentIdx = 0;
+    }
     
-    for (int i = 0; i < mybrch->total; i++) {
+    for (int row = 0; row < mybrch->total; row++) {
         if (query == NULL) {
-            if (displayAllBranches) {
-                mvprintw(i, 5, "%d: %s",  i+1, mybrch->branches[i]);
-            }
+            mvprintw(row, 5, "%d: %s",  row+1, mybrch->branches[row]);
+            UpdateRowArrow(mybrch->currentIdx, row);
+
         }
         else {
-            move(i, 0); 
+            move(row, 0); 
             clrtoeol();
 
-            if (strstr(mybrch->branches[i], query) != NULL) {
-                mvprintw(y++, 5, "%d: %s", y, mybrch->branches[i]);
-            }
-        }
+            if (strstr(mybrch->branches[row], query) != NULL) {
+                searchBuffer->branches[idx] = malloc(sizeof(mybrch->branches[row]) + 1);
+                if (searchBuffer->branches[idx] == NULL) {
+                    printf("Malloc failed.\n");
+                    exit(1);
+                }
 
-        if (i == mybrch->currentIdx) {
-            mvprintw(i, 0, "--->"); 
-        } 
-        else if (i == mybrch->currentIdx - 1 || 
-                 i == mybrch->currentIdx + 1) {
-            mvprintw(i, 0, "    "); // Only clear the marker for adjacent rows
+                strcpy(searchBuffer->branches[idx], mybrch->branches[row]);
+                searchBuffer->total++;
+                idx++;
+            }
         }
     }
 
-    displayAllBranches = (query == NULL) ? 0 : 1;
+    if (searchBuffer->total > 0 && IsUpdateUI) {
+        for (int row = 0; row < searchBuffer->total; row++) {
+            mvprintw(row, 5, "%d: %s", row+1, searchBuffer->branches[row]);
+            UpdateRowArrow(searchBuffer->currentIdx, row);
+        }
+    }
+
+    NotifyUpdateUI(eSTATIC);
 }
 
 static void KeyProcess()
@@ -148,6 +212,7 @@ static void KeyProcess()
 
                 char key = getch();
                 if (key == '\n')  {
+                    SwitchBranch(&searchBranch);
                     break;
                 } 
                 else if (key == Key_ESCAPE) {
@@ -159,10 +224,12 @@ static void KeyProcess()
                         buffer[--bufferLen] = '\0'; 
                     }
                     update = 1;
+                    NotifyUpdateUI(eUPDATE);
                 } 
                 else if (bufferLen < sizeof(buffer) - 1)  {
                     buffer[bufferLen++] = key;
                     buffer[bufferLen] = '\0'; 
+                    NotifyUpdateUI(eUPDATE);
                 }
                 
                 DumpBranches(buffer);
@@ -175,6 +242,7 @@ static void KeyProcess()
             clear();
             refresh();        
 
+            NotifyUpdateUI(eUPDATE);
             SetNextCmd(PROC_CMD_NONE);
             SetNextProc(Proc_UPDATE_UI);
         } break;
