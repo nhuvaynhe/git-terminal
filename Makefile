@@ -2,28 +2,25 @@
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -I. -Ibranches -Ikeyprocess -Iprocess -DNCURSES_STATIC
+CFLAGS = -DNCURSES_STATIC
 LDFLAGS = -lncurses
 
 # Output executable
 TARGET = main
 
 # Source files
-SRCS = main.c \
-       branches/branches.c \
-       keyprocess/keyproc.c \
-       process/proc.c
+SRCS = main.c branches/branches.c keyprocess/keyproc.c process/proc.c
 
 # Object files
-OBJS = $(SRCS:.c=.o)
+OBJS = main.o branches\branches.o keyprocess\keyproc.o process\proc.o
 
 # Detect the platform
 ifeq ($(OS),Windows_NT)
-    RM = del /f /q  # Use Windows delete command
-    EXE = .exe      # Executable extension for Windows
+    RM = del /f /q
+    EXE = .exe
 else
-    RM = rm -f      # Use Unix/Linux delete command
-    EXE =           # No extension for Unix/Linux executables
+    RM = rm -f
+    EXE =
 endif
 
 # Default target
@@ -31,7 +28,7 @@ all: $(TARGET)
 
 # Build the executable
 $(TARGET): $(OBJS)
-	$(CC) -o $(TARGET) $(OBJS) $(LDFLAGS)
+	$(CC) -o $(TARGET)$(EXE) $(OBJS) $(LDFLAGS)
 
 # Compile .c files to .o files
 %.o: %.c
@@ -39,7 +36,11 @@ $(TARGET): $(OBJS)
 
 # Clean up build files
 clean:
-	$(RM) $(OBJS) $(TARGET)$(EXE)
+ifeq ($(OS),Windows_NT)
+	$(RM) main.o branches\\branches.o keyprocess\\keyproc.o process\\proc.o $(TARGET)$(EXE)
+else
+	$(RM) main.o branches/branches.o keyprocess/keyproc.o process/proc.o $(TARGET)
+endif
 
 # Rebuild everything
 rebuild: clean all
