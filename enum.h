@@ -1,3 +1,6 @@
+#ifndef __ENUM_H__
+#define __ENUM_H__
+
 typedef enum {
     eFALSE,
     eTRUE,
@@ -19,6 +22,7 @@ typedef enum MainProc {
 typedef enum ProcCommand {
     Proc_CMD_UP,
     Proc_CMD_DOWN,
+    Proc_CMD_ENTER,
     Proc_CMD_SEARCH,
 
     PROC_CMD_NONE,
@@ -27,7 +31,7 @@ typedef enum ProcCommand {
 typedef enum KeyInput {
     Key_UP      = 'j',
     Key_DOWN    = 'k',
-    Key_SELECT  = 13,
+    Key_SELECT  = '\n',
     Key_SEARCH  = '/',
     Key_QUIT    = 'q',
     Key_ESCAPE  = 27,
@@ -35,3 +39,5 @@ typedef enum KeyInput {
 
     Key_NONE,
 } KeyInput;
+
+#endif

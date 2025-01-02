@@ -2,14 +2,17 @@
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -DNCURSES_STATIC
+CFLAGS = -I. -Ibranches -Ikeyprocess -Iprocess -DNCURSES_STATIC
 LDFLAGS = -lncurses
 
 # Output executable
 TARGET = main
 
 # Source files
-SRCS = main.c
+SRCS = main.c \
+       branches/branches.c \
+       keyprocess/keyproc.c \
+       process/proc.c
 
 # Object files
 OBJS = $(SRCS:.c=.o)
@@ -22,7 +25,6 @@ else
     RM = rm -f      # Use Unix/Linux delete command
     EXE =           # No extension for Unix/Linux executables
 endif
-
 
 # Default target
 all: $(TARGET)
